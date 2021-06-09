@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+   <title>School Lesson depot</title>
+   <script src="https://unpkg.com/vue"></script>
+</head>
+
+<body>
+   <div id="app">
+      <header>
+         <h1 v-text="sitename"></h1>
+         <button v-on:click='showShoppingCart' v-if='cartItemCount > 0'>
+            {{cartItemCount}}
+            <span class="fas fa-shopping-cart"> Shopping Cart </span>Shopping Cart
+         </button>
+         <button disabled='disabled' v-else>Shoping bag</button>
+         <div v-else>
+            <button type="button" class="btn btn-light" @click="showCheckOut" style="margin-left: 40px;">
+                Home
+            </button>
+        </div>
+      </header>
+      <main>
+         <div v-if='showProduct'>
+            <div v-for="lesson in lessons">
+               <img v-bind:src="lesson.image" height="350" width="350">
+               <p>subject: {{lesson.subject}}</p>
+               <p>location: {{lesson.location}}</p>
+               <p>price: {{lesson.price}}</p>
+               <p>Space Remaining: {{lesson.NumberOfSpace}}</p>
+               <p>
+                  <button v-on:click='addToCart(lesson)' v-if='canAddToCart(lesson)'>Add to cart</button>
+                  <button disabled='disabled' v-else>Add to
+                     cart</button>
+               </p>
+            </div>
+         </div>
+         <div v-else>
+            <div>
+               <div v-for="lesson in cart">
+                  <img v-bind:src="lesson.image" height="350" width="350">
+                  <p>subject: {{lesson.subject}}</p>
+                  <p>location: {{lesson.location}}</p>
+                  <p>price: {{lesson.price}}</p>
+                  <button v-on:click='remove(lesson)'>Remove</button>
+               </div>
+            </div>
+            <div>
+               <p>
+                  <label for="name">Name</label>
+                  <input placeholder="Enter your name" v-model.trim="order.name" class="form-control"
+                        onkeypress="return (event.charCode > 63 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123) || (event.charCode==32)"
+                        type="text" />
+               </p>
+               <p>
+                  <label for="phoneNumber">Phone Number</label>
+                  <input placeholder="Enter your number" v-model.trim="order.phoneNumber" class="form-control"
+                        onkeypress="ifNumeric" pattern="^\d{9}$" title="Please Enter A Valid Phone Number (9 Digits!)"
+                        type="tel" />
+               </p>
+               <button v-on:click="myLesson(lesson)"
+               v-if="this.order.phoneNumber!= 0 && this.order.name!= 0 && cartItemCount>0">Checkout</button>
+            </div>
+         </div>
+      </main>
+   </div>
+   <script>
+      var webstore = new Vue({
+         el: '#app',
+         data: {
+            sitename: "School Lesson",
+            lessons: [],
+            cartID: [],
+            cart: [],
+            showProduct: true,
+            order: {
+               name: '',
+               phoneNumber: ''
+
+            },
+         },
+         created: function () {
+            fetch('https://cst3010.herokuapp.com/collection/lessons').then(
+               function (response) {
+                  response.json().then(
+                     function (json) {
+                        webstore.lessons = json;
+
+                     });
+               })
+         },
+         methods: {
+            addToCart: function (lesson) {
+               this.cart.push(lesson);
+               if (lesson.NumberOfSpace) {
+                  lesson.NumberOfSpace -= 1;
+               }
+            },
+            remove(lesson) {
+               let index = this.cart.indexOf(lesson);
+               if (index > -1) {
+                  this.cart.splice(index, 1);
+               }
+               lesson.NumberOfSpace += 1;
+            },
+            canAddToCart(lesson) {
+               return lesson.NumberOfSpace > 0;
+            },
+            showShoppingCart() {
+               this.showProduct = this.showProduct ? false : true;
+            },
+            myLesson(lesson) {
+                    
+                    for(var i = 0; i < webstore.cart.length; i++){       
+                    var newProduct = { name: this.order.name, number: this.order.phoneNumber, activity: webstore.cart[i].activity, NumberOfSpace: webstore.cart[i].NumberOfSpace - webstore.cart[i].addedLessons};
+                    this.cartID.push(newProduct)
+                    }
+                    alert('Your order is processd')
+                    
+
+                    fetch('https://cst3010.herokuapp.com/collection/order', {
+                    method: 'POST', // set the HTTP method as 'POST'
+                    headers: {
+                    'Content-Type': 'application/json', // set the data type as JSON
+                    },
+                    body: JSON.stringify(this.cartID),
+                })
+                for(var i = 0; i < webstore.cart.length; i++){      
+                    var newProduct = { NumberOfSpace: webstore.cart[i].NumberOfSpace - webstore.cart[i].addedLessons};
+                    var lessonID = {lesson : webstore.cart[i]._id};       
+                    lesson = webstore.cart[i]._id;
+                    fetch('https://cst3010.herokuapp.com/collection/lessons/'+lesson+'', {
+                    method: 'PUT',
+                    headers: {
+                    'Content-Type': 'application/json', 
+                },
+                body: JSON.stringify(newProduct),
+                })
+                }
+                },
+
+            submitForm() {
+               alert('order has been submitted')
+            },
+         },
+         computed: {
+            cartItemCount: function () {
+               return this.cart.length || '';
+            },
+         }
+      })
+   </script>
+</body>
+
+</html>
